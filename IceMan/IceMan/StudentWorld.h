@@ -6,7 +6,6 @@
 #include <string>
 #include "Actor.h"
 #include <vector>
-
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 //class StudentWorld : public GameWorld
 //{
@@ -41,6 +40,7 @@ class Actor;
 class Ice;
 class CharacterBase;
 class IceMan;
+class Gold;
 
 class StudentWorld : public GameWorld
 {
@@ -54,17 +54,45 @@ public:
 
 	virtual void cleanUp();
 
+	bool isAboveEarth(int x, int y);
+
 	void updateDisplayText();
 
 	void removeObjects();
 
-	void addProtestors();
+	bool diggingIce(int x, int y, bool);
 
-	bool checkBoulder(int x, int y);
+	void addActors(Actor *actor);
 
+	void addInventory(int add);
 
+	bool isBoulder(int x, int y, int radius);
+
+	bool isThereAnyIce(int x, int y);
+
+	bool isThereAnyIceInBothDirections(int x, int y);
+
+	void randomCoordinates(int& x, int& y, char option) const;
+
+	bool distanceRadius(int x, int y1, int x2, int y2 , int radius);
+
+	bool clientRadius(Actor* actor, int radius);
+
+	void actorsDoSomething();
+
+	void clearDeadActors();
+	
+	void setDisplay();
+
+	void decBarrel();
+
+	void dropItem(Gold* gold);
+
+	void appearNearby(int x, int y, int radius);
 
 private:
+	int barrel;
+	int helper;
 	int ticks;
 	int lives;
 	int level;

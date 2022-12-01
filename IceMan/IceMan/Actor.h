@@ -16,10 +16,10 @@ public:
 
     void notAlive();
 
-    std::string type();
+    void moveToModified(int x, int y);
 
     void setTick(int tickUpdate);
-
+    
     void getTick();
 
     //during each tick
@@ -40,8 +40,6 @@ public:
 
     virtual void doSomething();
 
-    std::string type();
-
     ~Ice();
 
 private:
@@ -53,17 +51,13 @@ class CharacterBase : public Actor
 public:
     CharacterBase(int imageID, int xAxis, int yAxis, Direction startDirection, float size, unsigned int depth, StudentWorld* tempWorld);
 
-    bool isAnnoyed(int annoy);
-
-    virtual bool isNotMap(int pass);    //making sure that the character is not outside of the map/boundary
-
-    int getDamage();
+    bool isAnnoyed(int hp);
 
     void setDamage(int hp);
 
     void setHealth(int hp);
 
-    int getHealth();
+    int getHealth() const;
 
     ~CharacterBase();
 private:
@@ -74,17 +68,29 @@ class IceMan : public CharacterBase
 public:
     IceMan(StudentWorld* world);
 
+    int getSonar() const;
+
+    int getGold() const;
+
+    int getSquirt() const;
+
+    void updateSonar();
+
+    void updateGold();
+
+    void updateSquirt();
+
     virtual void doSomething();
 
-    void setInventoryCount(int item);
+    void addGoodies(int add);
 
-    int getInventoryCount();
-
-    std::string type();
+    void shoot();
 
     ~IceMan();
 private:
-    int invenctory[3];
+    int water;
+    int sonar;
+    int gold;
 };
 
 class Boulder : public Actor
@@ -94,16 +100,84 @@ public:
     virtual void doSomething();
 
 private:
-
+    int ticks = 0;
+    bool isStable;
+    bool flagFall;
 };
-class Protestor : public CharacterBase
+
+class Squirt : public Actor 
 {
 public:
-    Protestor(StudentWorld* world);
+    Squirt(int x, int y, StudentWorld* world, Direction dir);
+    virtual void doSomething();
+
+private:
+    int squirtTravel;
+};
+
+
+class Items : public Actor
+{
+public:
+    Items(StudentWorld* world, int imageID, int x, int y, int maxTick);
+    void increaseTick();
+    int getTick() const;
+    virtual void updateTick() = 0;
+private:
+    int itemTick;
+};
+
+class Gold : public Items
+{
+public:
+    Gold(StudentWorld* world, int x, int y, bool drop);
+    virtual void doSomething();
+    void pickUp();
+    virtual void updateTick();
+
+private:
+    bool isGrabItem;
+    int tickDrop;
+};
+
+
+class Barrels : public Items
+{
+public:
+    Barrels(StudentWorld* world, int x, int y);
+    virtual void doSomething();
+    virtual void updateTick();
+};
+
+class WaterRefills : public Items
+{
+public:
+    WaterRefills(StudentWorld* world, int x, int y);
+    virtual void doSomething();
+    virtual void updateTick();
+private:
+    int tick;
+};
+
+class Sonar : public Items
+{
+public:
+    Sonar(StudentWorld* world, int x, int y);
+    virtual void doSomething();
+    virtual void updateTick();
+private:
+    int tick;
+};
+
+class AI : public CharacterBase
+{
+
+public:
+    AI(StudentWorld* world);
 
     virtual void doSomething();
 
 private:
 
 };
-#endif // ACTOR_H
+#endif //ACTOR_H
