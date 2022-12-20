@@ -10,7 +10,7 @@ class Actor : public GraphObject
 public:
     Actor(int imageID, int startX, int startY, Direction startDirection, float size, unsigned int depth, StudentWorld* world);
 
-    StudentWorld* getWorld() const;    //Returns a pointer to the gameworld, access to all actors, and update
+    StudentWorld* getWorld() const;   //Returns a pointer to the gameworld, access to all actors, and update
 
     bool isAlive();
 
@@ -24,7 +24,6 @@ public:
 
     //during each tick
     virtual void doSomething() = 0; //PVF
-
     ~Actor();
 
 private:
@@ -51,7 +50,7 @@ class CharacterBase : public Actor
 public:
     CharacterBase(int imageID, int xAxis, int yAxis, Direction startDirection, float size, unsigned int depth, StudentWorld* tempWorld);
 
-    bool isAnnoyed(int hp);
+    virtual void isAnnoyed(int hp) = 0;
 
     void setDamage(int hp);
 
@@ -81,6 +80,8 @@ public:
     void updateSquirt();
 
     virtual void doSomething();
+
+    virtual void isAnnoyed(int health);
 
     void addGoodies(int add);
 
@@ -132,7 +133,7 @@ class Gold : public Items
 public:
     Gold(StudentWorld* world, int x, int y, bool drop);
     virtual void doSomething();
-    void pickUp();
+    void pickUpDisappear();
     virtual void updateTick();
 
 private:
@@ -149,6 +150,7 @@ public:
     virtual void updateTick();
 };
 
+
 class WaterRefills : public Items
 {
 public:
@@ -156,7 +158,7 @@ public:
     virtual void doSomething();
     virtual void updateTick();
 private:
-    int tick;
+    int tickWater;
 };
 
 class Sonar : public Items
@@ -166,18 +168,46 @@ public:
     virtual void doSomething();
     virtual void updateTick();
 private:
-    int tick;
+    int tickSonar;
 };
 
 class AI : public CharacterBase
 {
-
 public:
-    AI(StudentWorld* world);
-
+    AI(StudentWorld* world, int image, int hp);
     virtual void doSomething();
-
+    virtual void isAnnoyed(int health);
+    void getBribed();
+    void moveAIDirection(Direction d);
+    void randomMove();
+    void stunned();
+    void pickOptimalDirection();
+    void moveDirection(Direction d);
+    void moveDirectionPro(Direction dir);
+    bool facing();
+    bool isAtPath();
+    bool straightPathToIceMan(Direction dir);
+    Direction directionToIceMan();
+    Direction randomDirection();
+    
 private:
+    bool leave;
+    int numMove;
+    int tickTurn;
+    int tickWithoutWarning;
+    int tickRestState;
 
 };
+
+class RegularProtester : public AI
+{
+public:
+    RegularProtester(StudentWorld* world);
+};
+
+//class HardcoreProtester : public AI
+//{
+//public:
+//    HardcoreProtester(StudentWorld* world);
+//};
 #endif //ACTOR_H

@@ -40,7 +40,14 @@ class Actor;
 class Ice;
 class CharacterBase;
 class IceMan;
+class Items;
 class Gold;
+class Sonar;
+class WaterPool;
+class Barrels;
+class Boulder;
+class Squirt;
+class AI;
 
 class StudentWorld : public GameWorld
 {
@@ -48,23 +55,16 @@ public:
 	StudentWorld(std::string assetDir);
 
 	~StudentWorld();
+
+	IceMan* getIceMan() const;
+
 	virtual int init();
 
 	virtual int move();
 
 	virtual void cleanUp();
 
-	bool isAboveEarth(int x, int y);
-
-	void updateDisplayText();
-
-	void removeObjects();
-
-	bool diggingIce(int x, int y, bool);
-
-	void addActors(Actor *actor);
-
-	void addInventory(int add);
+	bool isNotBoundary(int x, int y, GraphObject::Direction d);
 
 	bool isBoulder(int x, int y, int radius);
 
@@ -72,11 +72,25 @@ public:
 
 	bool isThereAnyIceInBothDirections(int x, int y);
 
-	void randomCoordinates(int& x, int& y, char option) const;
+	bool isAboveEarth(int x, int y);
 
-	bool distanceRadius(int x, int y1, int x2, int y2 , int radius);
+	bool distanceRadius(int x, int y1, int x2, int y2, int radius);
 
 	bool clientRadius(Actor* actor, int radius);
+
+	bool diggingIce(int x, int y, bool);
+
+	void updateDisplayText();
+
+	void removeObjects();
+
+	void addActors(Actor *actor);
+
+	void addProtester();
+
+	void addInventory(int add);
+
+	void randomCoordinates(int& x, int& y, char option) const;
 
 	void actorsDoSomething();
 
@@ -86,20 +100,33 @@ public:
 
 	void decBarrel();
 
+	void decProtester();
+
 	void dropItem(Gold* gold);
+
+	void exitBFS(AI* bot);
 
 	void appearNearby(int x, int y, int radius);
 
 private:
+	bool firstTick;
 	int barrel;
 	int helper;
 	int ticks;
+	int protesterLives;
 	int lives;
 	int level;
 	GameWorld* world;
 	Ice* iceField[VIEW_WIDTH][VIEW_HEIGHT];
 	IceMan* player;
 	std::vector<Actor*> gameObj;
+	int fieldBFS[64][64];
+	struct Arena {
+		int x;
+		int y;
+		Arena(int a, int b) : x(a), y(b) {}
+	};
+
 };
 
 
