@@ -2,9 +2,10 @@
 #include "StudentWorld.h"
 #include "GameConstants.h"
 #include <algorithm>
+#include <cctype>
 // Students:  Add code to this file (if you wish), Actor.h, StudentWorld.h, and StudentWorld.cpp
 Actor::Actor(int imageID, int xAxis, int yAxis, Direction startDirection, float size, unsigned int depth, StudentWorld* world)
-	:GraphObject(imageID, xAxis, yAxis, startDirection, size, depth), studentWorld(world)
+	:GraphObject(imageID, xAxis, yAxis, startDirection, size, depth), studentWorld(world), stillAlive(true)
 {
 	setVisible(true);
 }
@@ -65,7 +66,7 @@ CharacterBase::CharacterBase(int imageID, int xAxis, int yAxis, Direction startD
 	this->health = 0;
 }
 
-void CharacterBase::setDamage(int hp)
+void CharacterBase::decrementHealth(int hp)
 {
 	health -= hp;
 }
@@ -90,7 +91,7 @@ IceMan::IceMan(StudentWorld* world) : CharacterBase(IID_PLAYER, 30, 60, right, 1
 
 void IceMan::isAnnoyed(int hp)
 {
-	setDamage(hp);
+	decrementHealth(hp);
 	if (getHealth() <= 0) {
 		notAlive();
 		getWorld()->playSound(SOUND_PLAYER_GIVE_UP);
@@ -127,7 +128,6 @@ void IceMan::updateGold()
 	gold++;
 }
 
-
 void IceMan::doSomething()
 {
 	bool flag = false;
@@ -159,7 +159,7 @@ void IceMan::doSomething()
 			}
 			else setDirection(right);
 			break;
-		case KEY_PRESS_UP:   
+		case KEY_PRESS_UP:
 			if (dir == up) {
 				if (!getWorld()->isBoulder(getX(), getY() + 1, 3))
 					moveToModified(getX(), getY() + 1);
@@ -168,7 +168,7 @@ void IceMan::doSomething()
 			}
 			else setDirection(up);
 			break;
-		case KEY_PRESS_DOWN: 
+		case KEY_PRESS_DOWN:
 			if (dir == down) {
 				if (!getWorld()->isBoulder(getX(), getY() - 1, 3))
 					moveToModified(getX(), getY() - 1);
@@ -184,6 +184,21 @@ void IceMan::doSomething()
 				shoot();
 			}
 			break;
+		case 'Z':
+		case 'z':
+			if (sonar > 0)
+			{
+				sonar--;
+				getWorld()->appearNearby(getX(), getY(), 12);
+				getWorld()->playSound(SOUND_SONAR);
+			}
+			break;
+		case KEY_PRESS_TAB:
+			if (gold > 0)
+			{
+				getWorld()->addActors(new Gold(getWorld(), getX(), getY(), true));
+				gold--;
+			}
 		}
 	}
 }
@@ -257,16 +272,35 @@ void Boulder::doSomething()
 		else
 		{
 			moveTo(getX(), getY() - 1);
+			annoyIceMan();
 		}
 	}
 }
 
-Squirt::Squirt(int x, int y, StudentWorld* world, Direction dir):Actor(IID_WATER_SPURT, x, y, dir, 1.0, 1, world)
+void Boulder::annoyIceMan()
+{
+	if (getWorld()->clientRadius(this, 3))
+	{
+		getWorld()->getIceMan()->isAnnoyed(100);
+	}
+	AI* bot = getWorld()->radiusProtester(this, 3);
+	if (bot != NULL)
+	{
+		bot->isAnnoyed(100);
+	}
+}
+
+Squirt::Squirt(int x, int y, StudentWorld* world, Direction dir):Actor(IID_WATER_SPURT, x, y, dir, 1.0, 1, world),squirtTravel(0)
 {}
 
 void Squirt::doSomething()
 {
 	if(!isAlive()) return;
+	if (annoyProtester() || squirtTravel == 4)
+	{
+		notAlive();
+		return;
+	}
 	switch (getDirection()) {
 		case left:
 			if (getWorld()->isThereAnyIce(getX() - 1, getY()) || getWorld()->isBoulder(getX() - 1, getY(),3)) {
@@ -292,7 +326,21 @@ void Squirt::doSomething()
 			}
 			else moveTo(getX(), getY() - 1);
 			break;
+		case none:
+			return;
 	}
+	squirtTravel++;
+}
+
+bool Squirt::annoyProtester()
+{
+	AI* bot = getWorld()->radiusProtester(this, 3);
+	if (bot != NULL)
+	{
+		bot->isAnnoyed(1);
+		return true;
+	}
+	return false;
 }
 
 Items::Items(StudentWorld* world, int imageID, int x, int y, int maxTick):Actor(imageID, x, y, right, 1.0, 2, world)
@@ -309,7 +357,7 @@ int Items::getTick() const
 }
 Gold::Gold(StudentWorld* world, int x, int y, bool drop):Items(world, IID_GOLD, x, y, 100),isGrabItem(drop)
 {
-	setVisible(true);
+	setVisible(false);
 }
 
 void Gold::doSomething()
@@ -329,8 +377,14 @@ void Gold::doSomething()
 		getWorld()->increaseScore(10);
 		return;
 	}
-	else
+	else if (isGrabItem)
 	{
+		AI* bot = (getWorld()->radiusProtester(this, 3));
+		if (bot != NULL)
+		{
+			notAlive();
+			bot->getBribed();
+		}
 		pickUpDisappear();
 	}
 	increaseTick();
@@ -347,7 +401,7 @@ void Gold::updateTick()
 
 Barrels::Barrels(StudentWorld* world, int x, int y) :Items(world, IID_BARREL, x, y, 0)
 {
-	setVisible(true);
+	setVisible(false);
 }
 
 void Barrels::doSomething()
@@ -431,7 +485,7 @@ void Sonar::updateTick()
 	tickSonar = getTick();
 }
 
-AI::AI(StudentWorld* world, int image, int hp):CharacterBase(image,60,60,left,1.0,0,world)
+AI::AI(StudentWorld* world, int image):CharacterBase(image,60,60,left,1.0,0,world)
 {
 	leave = false;
 	tickTurn = 200;
@@ -439,40 +493,7 @@ AI::AI(StudentWorld* world, int image, int hp):CharacterBase(image,60,60,left,1.
 	randomMove();
 	tickRestState = std::max(0, 3 - (int)getWorld() / 4);
 }
-void AI::moveDirectionPro(Direction direction)
-{
-	switch (direction) {
-	case left:
-		if (getDirection() == left) {
-			if (getX() == 0) setDirection(right);
-			moveTo(getX() - 1, getY());
-		}
-		else setDirection(left);
-		break;
-	case right:
-		if (getDirection() == right) {
-			if (getX() == 60) setDirection(left);
-			moveTo(getX() + 1, getY());
-		}
-		else setDirection(right);
-		break;
-	case up:
-		if (getDirection() == up) {
-			if (getY() == 60) setDirection(down);
-			moveTo(getX(), getY() + 1);
-		}
-		else setDirection(up);
-		break;
-	case down:
-		if (getDirection() == down) {
-			if (getY() == 0) setDirection(up);
-			moveTo(getX(), getY() - 1);
-		}
-		else setDirection(down);
-		break;
-	case none: return;
-	}
-}
+
 void AI::moveDirection(Direction d)
 {
 	switch (d) 
@@ -551,6 +572,7 @@ void AI::moveDirection(Direction d)
 
 void AI::doSomething()
 {
+	Direction player = directionToIceMan();
 	if (!isAlive()) return;
 
 	if (tickRestState > 0)
@@ -568,7 +590,7 @@ void AI::doSomething()
 	{
 		if (getX() == 60 && getY() == 30) {
 			notAlive();
-			getWorld()->decProtester();
+		getWorld()->decProtester();
 			return;
 		}
 			getWorld()->exitBFS(this);
@@ -585,22 +607,25 @@ void AI::doSomething()
 		}
 		return;
 	}
-	if (directionToIceMan() != none && (!getWorld()->clientRadius(this, 4)))
+	if (player != none && straightPathToIceMan(player) && (!getWorld()->clientRadius(this, 4)))
 	{
-		setDirection(directionToIceMan());
-		moveDirectionPro(directionToIceMan());
+		setDirection(player);
+		moveDirectionPro(player);
 		numMove = 0;
 		return;
 	}
 	numMove--;
-	if (numMove < 1)
+	if (numMove <= 0)
 	{
-		Direction temp = randomDirection();
+		Direction temp = none;
+		temp = randomDirection();
 		while (true)
 		{
 			temp = randomDirection();
-			if (getWorld()->isNotBoundary(getX(), getY(), temp));
+			if (getWorld()->isNotBoundary(getX(), getY(), temp))
+			{
 				break;
+			}
 		}
 		setDirection(temp);
 		randomMove();
@@ -618,9 +643,66 @@ void AI::doSomething()
 	}
 }
 
+void AI::moveDirectionPro(Direction direction)
+{
+	switch (direction) {
+	case left:
+		if (getDirection() == left) {
+			if (getX() == 0)
+			{
+				setDirection(right);
+			}
+			moveTo(getX() - 1, getY());
+		}
+		else setDirection(left);
+		break;
+	case right:
+		if (getDirection() == right) {
+			if (getX() == 60)
+			{
+				setDirection(left);
+			}
+			moveTo(getX() + 1, getY());
+		}
+		else
+		{
+			setDirection(right);
+		}
+		break;
+	case up:
+		if (getDirection() == up) {
+			if (getY() == 60)
+			{
+				setDirection(down);
+			}
+			moveTo(getX(), getY() + 1);
+		}
+		else
+		{
+			setDirection(up);
+		}
+		break;
+	case down:
+		if (getDirection() == down) {
+			if (getY() == 0)
+			{
+				setDirection(up);
+			}
+			moveTo(getX(), getY() - 1);
+		}
+		else
+		{
+			setDirection(down);
+		}
+		break;
+	case none: 
+		return;
+	}
+}
+
 GraphObject::Direction AI::randomDirection()
 {
-	/*int randNum;
+	int randNum;
 	randNum = rand() % 4;
 	if (randNum == 0)
 	{
@@ -638,15 +720,6 @@ GraphObject::Direction AI::randomDirection()
 	{
 		return down;
 	}
-	return none;*/
-	int r;
-	r = rand() % 4;
-	switch (r) {
-	case 0: return left;
-	case 1: return  right;
-	case 2: return up;
-	case 3: return down;
-	}
 	return none;
 }
 
@@ -659,7 +732,7 @@ bool AI::straightPathToIceMan(Direction dir)
 	case left:
 		for (int i = getX(); i >= x; i--)
 		{
-			if (getWorld()->isThereAnyIce(i, getY()) || getWorld()->isBoulder(i, getY(), 3))
+			if (getWorld()->isThereAnyIceInBothDirections(i, getY()) || getWorld()->isBoulder(i, getY(), 3))
 				return false;
 		}
 		return true;
@@ -668,7 +741,7 @@ bool AI::straightPathToIceMan(Direction dir)
 	case right:
 		for (int i = getX(); i <= x; i++)
 		{
-			if (getWorld()->isThereAnyIce(i, getY()) || getWorld()->isBoulder(i, getY(), 3))
+			if (getWorld()->isThereAnyIceInBothDirections(i, getY()) || getWorld()->isBoulder(i, getY(), 3))
 				return false;
 		}
 		return true;
@@ -677,7 +750,7 @@ bool AI::straightPathToIceMan(Direction dir)
 	case up:
 		for (int i = getY(); i <= y; i++)
 		{
-			if (getWorld()->isThereAnyIce(getX(),i) || getWorld()->isBoulder(getX(), i, 3))
+			if (getWorld()->isThereAnyIceInBothDirections(getX(),i) || getWorld()->isBoulder(getX(), i, 3))
 				return false;
 		}
 		return true;
@@ -686,7 +759,7 @@ bool AI::straightPathToIceMan(Direction dir)
 	case down:
 		for (int i = getY(); i >= y; i--)
 		{
-			if (getWorld()->isThereAnyIce(getX(),i) || getWorld()->isBoulder(getX(), i, 3))
+			if (getWorld()->isThereAnyIceInBothDirections(getX(),i) || getWorld()->isBoulder(getX(), i, 3))
 				return false;
 		}
 		return true;
@@ -706,7 +779,7 @@ bool AI::facing()
 	case up:
 		return getWorld()->getIceMan()->getY() >= getY();
 	case down:
-		return getWorld()->getIceMan()->getY() >= getY();
+		return getWorld()->getIceMan()->getY() <= getY();
 	case none:
 		return false;
 	}
@@ -772,14 +845,15 @@ void AI::pickOptimalDirection()
 		}
 		else
 		{
-			/*if (rand() % 2 == 0)
+			if (rand() % 2 == 0)
 			{
 				setDirection(left);
 			}
 			else if (rand() % 2 == 1)
 			{
 				setDirection(right);
-			}*/
+			}
+		
 		}
 	}
 	else
@@ -794,17 +868,13 @@ void AI::pickOptimalDirection()
 		}
 		else
 		{
-			/*if (rand() % 2 == 0)
+			if (rand() % 2 == 0)
 			{
 				setDirection(up);
 			}
 			else if (rand() % 2 == 1)
 			{
 				setDirection(down);
-			}*/
-			switch (rand() % 2) {
-			case 0: setDirection(up);
-			case 1: setDirection(down);
 			}
 		}
 	}
@@ -812,17 +882,62 @@ void AI::pickOptimalDirection()
 
 void AI::isAnnoyed(int hp)
 {
-	hp = 0;
-	 
-}
+	if (leave)
+	{
+		return;
+	}
+	else
+	{
+		decrementHealth(hp);
+		getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+		stunned();
+	}
+	if (getHealth() < 0)
+	{
+		getWorld()->playSound(SOUND_PROTESTER_GIVE_UP);
+		leave = true;
+		tickRestState = 0;
+		if (hp == 100)
+		{
+			getWorld()->increaseScore(500);
+		}
+		else if (getID() == IID_PROTESTER)
+		{
+			getWorld()->increaseScore(100);
+		}
+		else
+		{
+			getWorld()->increaseScore(250);
+		}
+	}
 
+}
+void AI::stunned()
+{
+	tickRestState = std::max(50, 100 - (int)getWorld()->getLevel() * 10);
+}
 void AI::randomMove()
 {
 	numMove = rand() % 55 + 6;  //0-60 random
 }
-
-RegularProtester::RegularProtester(StudentWorld* world):AI(world,IID_PROTESTER,5)
-{}
+void AI::getBribed()
+{
+	getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
+	if (getID() == IID_PROTESTER)
+	{
+		getWorld()->increaseScore(25);
+		leave = true;
+	}
+	else
+	{
+		getWorld()->increaseScore(25);
+		tickRestState = std::max(50, 100 - int(getWorld()->getLevel()) * 10);
+	}
+}
+RegularProtester::RegularProtester(StudentWorld* world):AI(world,IID_PROTESTER)
+{
+	this->setHealth(5);
+}
 
 //HardcoreProtester::HardcoreProtester(StudentWorld* world) : AI(world, IID_HARD_CORE_PROTESTER, 15)
 //{}

@@ -58,6 +58,8 @@ public:
 
 	IceMan* getIceMan() const;
 
+	AI* radiusProtester(Actor* actor, int radius);
+
 	virtual int init();
 
 	virtual int move();
@@ -77,6 +79,7 @@ public:
 	bool distanceRadius(int x, int y1, int x2, int y2, int radius);
 
 	bool clientRadius(Actor* actor, int radius);
+
 
 	bool diggingIce(int x, int y, bool);
 

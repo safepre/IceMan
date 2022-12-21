@@ -14,7 +14,15 @@ GameWorld* createStudentWorld(string assetDir)
 void StudentWorld::setDisplay()
 {
 	stringstream stringOutput;
+	stringOutput << "Scr:" << setw(2) << getScore() << " ";
 	stringOutput << "Lvl:" << setw(2) << getLevel() << " ";
+	stringOutput << "Lives:" << setw(2) << getLives() << " ";
+	stringOutput << "Hlth:" << setw(2) << player->getHealth() << " ";
+	stringOutput << "Sqrt" << setw(2) << player->getSquirt() << " ";
+	stringOutput << "Gld" << setw(2) << player->getGold() << " ";
+	stringOutput << "Snr" << setw(2) << player->getSonar() << " ";
+	stringOutput << "Brl" << setw(2) << barrel << " ";
+
 	setGameStatText(stringOutput.str());
 }
 
@@ -192,7 +200,6 @@ void StudentWorld::addActors(Actor *actor)
 	gameObj.push_back(actor);
 }
 
-
 bool StudentWorld::isThereAnyIce(int x, int y)
 {
 	for (int i = x; i < x + 4; i++)
@@ -244,13 +251,13 @@ bool StudentWorld::isNotBoundary(int x, int y, GraphObject::Direction d)
 	switch (d)
 	{
 		case GraphObject::left:
-			return (x != 0 && !isThereAnyIce(x - 1, y) && !isBoulder(x - 1, y, 0));
+			return (x != 0 && !isThereAnyIceInBothDirections(x - 1, y) && !isBoulder(x - 1, y, 3));
 		case GraphObject::right:
-			return (x != 60 && !isThereAnyIce(x + 1, y) && !isBoulder(x + 1, y, 0));
+			return (x != 60 && !isThereAnyIceInBothDirections(x + 1, y) && !isBoulder(x + 1, y, 3));
 		case GraphObject::down:
-			return (y != 0 && !isThereAnyIce(x, y-1) && !isBoulder(x, y-1, 0));
+			return (y != 0 && !isThereAnyIceInBothDirections(x, y-1) && !isBoulder(x, y-1, 3));
 		case GraphObject::up:
-			return (y != 60 && !isThereAnyIce(x, y + 1) && !isBoulder(x, y + 1, 0));
+			return (y != 60 && !isThereAnyIceInBothDirections(x, y + 1) && !isBoulder(x, y + 1,3));
 		case GraphObject::none:
 			return false;
 	}
@@ -262,6 +269,16 @@ bool StudentWorld::distanceRadius(int x1, int y1, int x2, int y2, int radius)
 	return ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) < radius * radius;
 }
 
+AI* StudentWorld::radiusProtester(Actor* actor, int radius)
+{
+	vector<Actor*>::iterator it;
+	for (it = gameObj.begin(); it != gameObj.end(); it++) {
+		if ((*it)->getID() == IID_PROTESTER)
+			if (distanceRadius(actor->getX(), actor->getY(), (*it)->getX(), (*it)->getY(), radius))
+				return dynamic_cast<AI*> (*it);
+	}
+	return nullptr;
+}
 bool StudentWorld::clientRadius(Actor* actor, int radius)
 {
 	return distanceRadius(actor->getX(), actor->getY(), player->getX(), player->getY(), radius);
@@ -302,14 +319,10 @@ void StudentWorld::addProtester()
 {
 	int T = max(25, 200 - (int)getLevel());
 	int P = min(15, 2 + (int)getLevel() * (int)1.5);
-	int probabilityHardcore = min(90, (int)getLevel() * 10 + 30);
+	//int probabilityHardcore = min(90, (int)getLevel() * 10 + 30);
 		if (firstTick || (ticks > T && protesterLives < P))
 		{
-			if (!(rand() % 100 + 1 < probabilityHardcore))
-			/*{
-				addActors(new HardcoreProtester(this));
-			}*/
-			//else
+			if ((rand() % 100 + 1 ))
 			{
 				addActors(new RegularProtester(this));
 				ticks = 0;

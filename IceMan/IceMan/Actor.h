@@ -52,7 +52,7 @@ public:
 
     virtual void isAnnoyed(int hp) = 0;
 
-    void setDamage(int hp);
+    void decrementHealth(int hp);
 
     void setHealth(int hp);
 
@@ -99,6 +99,7 @@ class Boulder : public Actor
 public:
     Boulder(StudentWorld* world, int x, int y);
     virtual void doSomething();
+    void annoyIceMan();
 
 private:
     int ticks = 0;
@@ -111,6 +112,7 @@ class Squirt : public Actor
 public:
     Squirt(int x, int y, StudentWorld* world, Direction dir);
     virtual void doSomething();
+    bool annoyProtester();
 
 private:
     int squirtTravel;
@@ -174,7 +176,7 @@ private:
 class AI : public CharacterBase
 {
 public:
-    AI(StudentWorld* world, int image, int hp);
+    AI(StudentWorld* world, int image);
     virtual void doSomething();
     virtual void isAnnoyed(int health);
     void getBribed();
